@@ -4,7 +4,7 @@ import asyncio
 import json
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -46,6 +46,38 @@ async def api_parse_resume(request: Request):
     body = await request.json()
     resume_text = body.get("resume_text", "")
     result = await parse_resume(resume_text=resume_text)
+    return json.loads(result)
+
+
+@app.post("/api/upload_resume")
+async def api_upload_resume(file: UploadFile = File(...)):
+    content = await file.read()
+
+    if file.filename.endswith(".pdf"):
+        try:
+            from pypdf import PdfReader
+            import io
+
+            reader = PdfReader(io.BytesIO(content))
+            text = "\n".join([page.extract_text() for page in reader.pages])
+        except Exception as e:
+            return {"status": "error", "message": f"Failed to read PDF: {str(e)}"}
+    elif file.filename.endswith((".docx", ".doc")):
+        try:
+            from docx import Document
+            import io
+
+            doc = Document(io.BytesIO(content))
+            text = "\n".join([para.text for para in doc.paragraphs])
+        except Exception as e:
+            return {"status": "error", "message": f"Failed to read DOCX: {str(e)}"}
+    else:
+        try:
+            text = content.decode("utf-8")
+        except:
+            text = content.decode("latin-1")
+
+    result = await parse_resume(resume_text=text)
     return json.loads(result)
 
 

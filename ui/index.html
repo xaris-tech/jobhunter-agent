@@ -180,6 +180,61 @@
       cursor: not-allowed;
     }
 
+    /* Upload Area */
+    .upload-area {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 32px;
+      text-align: center;
+      transition: all 0.2s;
+      cursor: pointer;
+      background: var(--bg);
+    }
+
+    .upload-area:hover, .upload-area.dragover {
+      border-color: var(--primary);
+      background: #EFF6FF;
+    }
+
+    .upload-content p {
+      margin: 8px 0 0 0;
+      color: var(--text-secondary);
+    }
+
+    .upload-content a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .upload-content a:hover {
+      text-decoration: underline;
+    }
+
+    .file-info {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 12px;
+      background: #ECFDF5;
+      border-radius: 8px;
+      color: var(--success);
+    }
+
+    .btn-remove {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      padding: 0 4px;
+    }
+
+    .btn-remove:hover {
+      color: #EF4444;
+    }
+
     .btn-primary {
       background: var(--primary);
       color: white;
@@ -504,10 +559,26 @@
         Resume
       </h2>
       <div class="input-group">
+        <label class="input-label">Upload your resume (PDF or DOCX)</label>
+        <div class="upload-area" id="uploadArea">
+          <input type="file" id="resumeFile" accept=".pdf,.docx,.doc,.txt" style="display: none;">
+          <div class="upload-content" id="uploadContent">
+            <span style="font-size: 32px;">📎</span>
+            <p>Drag & drop or <a href="#" onclick="document.getElementById('resumeFile').click(); return false;">browse</a></p>
+            <p style="font-size: 12px; color: var(--text-secondary);">PDF, DOCX, DOC, TXT (max 5MB)</p>
+          </div>
+          <div class="file-info hidden" id="fileInfo">
+            <span id="fileName"></span>
+            <button class="btn-remove" onclick="removeFile()">×</button>
+          </div>
+        </div>
+      </div>
+      <div style="margin: 16px 0; text-align: center; color: var(--text-secondary);">or</div>
+      <div class="input-group">
         <label class="input-label">Paste your resume text</label>
         <textarea 
           id="resumeInput" 
-          rows="8" 
+          rows="6" 
           placeholder="Paste your resume content here... The agent will extract your skills and experience."
         ></textarea>
       </div>
@@ -675,12 +746,96 @@
       return 'Partial Match';
     }
 
+    // File upload handling
+    const uploadArea = document.getElementById('uploadArea');
+    const resumeFile = document.getElementById('resumeFile');
+    const uploadContent = document.getElementById('uploadContent');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+
+    uploadArea.addEventListener('click', () => resumeFile.click());
+    
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('dragover');
+    });
+    
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('dragover');
+    });
+    
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      const files = e.dataTransfer.files;
+      if (files.length > 0) handleFile(files[0]);
+    });
+    
+    resumeFile.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) handleFile(e.target.files[0]);
+    });
+
+    function handleFile(file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File too large. Maximum size is 5MB.');
+        return;
+      }
+      
+      const validTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword', 'text/plain'];
+      if (!validTypes.includes(file.type) && !file.name.match(/\.(pdf|docx?|txt)$/i)) {
+        alert('Invalid file type. Please upload PDF, DOCX, DOC, or TXT.');
+        return;
+      }
+      
+      uploadContent.classList.add('hidden');
+      fileInfo.classList.remove('hidden');
+      fileName.textContent = file.name;
+      
+      // Upload file directly to backend
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      setStatus('Uploading resume...', true);
+      
+      fetch('/api/upload_resume', {
+        method: 'POST',
+        body: formData
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success') {
+          appState.resume.text = data.skills.join(' ') + ' ' + (data.experience?.join(' ') || '');
+          appState.resume.skills = data.skills;
+          appState.resume.parsed = true;
+          renderSkills(data.skills);
+          setStatus('Resume parsed', false);
+          setStep(2);
+          // Also update textarea
+          document.getElementById('resumeInput').value = appState.resume.text;
+        } else {
+          throw new Error(data.message || 'Failed to parse resume');
+        }
+      })
+      .catch(err => {
+        setStatus('Error', false);
+        alert('Failed to upload resume: ' + err.message);
+      });
+    }
+
+    function removeFile() {
+      resumeFile.value = '';
+      uploadContent.classList.remove('hidden');
+      fileInfo.classList.add('hidden');
+      appState.resume.text = '';
+      document.getElementById('resumeInput').value = '';
+    }
+
     async function parseResume() {
       const btn = document.getElementById('parseResumeBtn');
-      const resumeText = document.getElementById('resumeInput').value.trim();
+      let resumeText = appState.resume.text || document.getElementById('resumeInput').value.trim();
       
       if (!resumeText) {
-        alert('Please enter your resume text');
+        alert('Please upload a resume or paste resume text');
         return;
       }
 
