@@ -580,6 +580,34 @@
       </div>
       <div class="cover-letter-content" id="coverLetterContent"></div>
     </section>
+
+    <!-- CV Preview Section -->
+    <section class="card hidden" id="cvPreviewSection">
+      <h2 class="card-title">
+        <span class="card-title-icon">📋</span>
+        Personalized CV
+        <span id="atsScore" style="margin-left: auto; font-size: 13px; color: var(--success);"></span>
+      </h2>
+      <div id="cvPreviewContent">
+        <div class="cv-section">
+          <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Summary</h3>
+          <div id="cvSummary" contenteditable="true" style="padding: 12px; background: var(--bg); border-radius: 8px; min-height: 60px;"></div>
+        </div>
+        <div class="cv-section" style="margin-top: 16px;">
+          <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Experience</h3>
+          <div id="cvExperience"></div>
+        </div>
+        <div class="cv-section" style="margin-top: 16px;">
+          <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Skills</h3>
+          <div id="cvSkills" contenteditable="true" style="padding: 12px; background: var(--bg); border-radius: 8px;"></div>
+        </div>
+      </div>
+      <div class="cv-insights" id="cvInsights" style="margin-top: 16px; padding: 12px; background: #EFF6FF; border-radius: 8px; font-size: 13px;"></div>
+      <div class="btn-group" style="margin-top: 20px;">
+        <button class="btn btn-secondary" id="regenerateBtn" onclick="regenerateCV()">Regenerate</button>
+        <button class="btn btn-primary" id="sendAppBtn" onclick="sendApplication()">Send Application</button>
+      </div>
+    </section>
   </main>
 
   <script>
@@ -829,7 +857,7 @@
       const selectedCard = document.querySelector(`[data-index="${index}"]`);
       if (selectedCard) selectedCard.style.borderLeftColor = 'var(--secondary)';
       
-      await generateCoverLetter();
+      await generateCV(index);
     }
 
     async function generateCoverLetter() {
@@ -885,6 +913,102 @@
           setTimeout(() => btn.textContent = original, 2000);
         });
       }
+    }
+
+    async function generateCV(jobIndex) {
+      const job = appState.jobs.results[jobIndex];
+      if (!appState.resume.parsed) {
+        alert('Please parse your resume first');
+        return;
+      }
+      
+      const btn = document.getElementById('searchJobsBtn');
+      setLoading(btn, true);
+      setStatus('Generating personalized CV...', true);
+      
+      try {
+        const response = await fetch('/api/customize_cv', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            job_data: JSON.stringify(job),
+            resume_data: JSON.stringify(appState.resume),
+            user_name: ''
+          })
+        });
+        
+        const data = await response.json();
+        setLoading(btn, false);
+        
+        if (data.status === 'success') {
+          showCVPreview(data);
+          setStatus('CV ready for review', false);
+        } else {
+          throw new Error(data.message || 'Failed to generate CV');
+        }
+      } catch (error) {
+        setLoading(btn, false);
+        setStatus('Error', false);
+        alert('Failed to generate CV: ' + error.message);
+      }
+    }
+
+    function showCVPreview(data) {
+      const section = document.getElementById('cvPreviewSection');
+      const atsBadge = document.getElementById('atsScore');
+      const summary = document.getElementById('cvSummary');
+      const experience = document.getElementById('cvExperience');
+      const skills = document.getElementById('cvSkills');
+      const insights = document.getElementById('cvInsights');
+      
+      atsBadge.textContent = `ATS Score: ${data.ats_score}%`;
+      atsBadge.style.color = data.ats_score >= 80 ? 'var(--success)' : 
+                             data.ats_score >= 60 ? 'var(--warning)' : 'var(--text-secondary)';
+      
+      summary.textContent = data.personalized_cv.summary;
+      
+      experience.innerHTML = data.personalized_cv.experience.map(exp => `
+        <div style="margin-bottom: 12px; padding: 12px; background: var(--bg); border-radius: 8px;">
+          <div style="font-weight: 600;">${exp.title}</div>
+          <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">${exp.company}</div>
+          <ul style="margin: 0; padding-left: 20px;">
+            ${exp.highlights.map(h => `<li>${h}</li>`).join('')}
+          </ul>
+        </div>
+      `).join('');
+      
+      skills.textContent = data.personalized_cv.skills;
+      insights.textContent = data.match_insights;
+      
+      section.classList.remove('hidden');
+      section.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function regenerateCV() {
+      const btn = document.getElementById('regenerateBtn');
+      setLoading(btn, true);
+      
+      if (appState.selectedJob) {
+        const jobIndex = appState.jobs.results.findIndex(j => j.title === appState.selectedJob.title);
+        if (jobIndex >= 0) {
+          generateCV(jobIndex);
+        }
+      }
+    }
+
+    function sendApplication() {
+      const summary = document.getElementById('cvSummary').textContent;
+      const skills = document.getElementById('cvSkills').textContent;
+      
+      navigator.clipboard.writeText(`Summary:\n${summary}\n\nSkills:\n${skills}`).then(() => {
+        const btn = document.getElementById('sendAppBtn');
+        const original = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => {
+          btn.textContent = original;
+          document.getElementById('cvPreviewSection').classList.add('hidden');
+        }, 2000);
+      });
     }
 
     // Load state from localStorage on init
