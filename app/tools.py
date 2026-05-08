@@ -4,6 +4,11 @@ from typing import Dict, Any
 from pathlib import Path
 from google import genai
 
+# Load .env file
+from dotenv import load_dotenv
+
+load_dotenv()
+
 client = (
     genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
     if os.getenv("GEMINI_API_KEY")
@@ -475,7 +480,7 @@ Rules:
             )
 
         response = client.models.generate_content(
-            model="gemini-2.0-flash", contents=prompt
+            model="gemini-2.5-flash", contents=prompt
         )
 
         result_text = response.text.strip()
