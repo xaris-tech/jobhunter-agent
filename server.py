@@ -14,6 +14,7 @@ from app.tools import (
     parse_resume,
     match_jobs_to_resume,
     generate_cover_letter,
+    customize_cv,
 )
 
 app = FastAPI(title="JobHunter Agent API")
@@ -73,6 +74,16 @@ async def api_generate_cover_letter(request: Request):
     job_data = body.get("job_data", "{}")
     resume_data = body.get("resume_data", "{}")
     result = await generate_cover_letter(job_data, resume_data)
+    return json.loads(result)
+
+
+@app.post("/api/customize_cv")
+async def api_customize_cv(request: Request):
+    body = await request.json()
+    job_data = body.get("job_data", "{}")
+    resume_data = body.get("resume_data", "{}")
+    user_name = body.get("user_name", "")
+    result = await customize_cv(job_data, resume_data, user_name)
     return json.loads(result)
 
 
