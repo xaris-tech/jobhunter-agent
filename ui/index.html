@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JobHunter Agent</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #F7F8FA;
+      --surface: #FFFFFF;
+      --primary: #2563EB;
+      --primary-hover: #1D4ED8;
+      --secondary: #7C3AED;
+      --text-primary: #1F2937;
+      --text-secondary: #6B7280;
+      --success: #059669;
+      --warning: #F59E0B;
+      --border: #E5E7EB;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08);
+      --shadow-hover: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 16px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      background: #ECFDF5;
+      color: var(--success);
+    }
+
+    .status-badge.processing {
+      background: #FEF3C7;
+      color: var(--warning);
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .status-badge.processing .status-dot {
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* Cards */
+    .card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-title-icon {
+      font-size: 18px;
+    }
+
+    /* Form Elements */
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .input-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    textarea, input[type="text"] {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 14px;
+      resize: vertical;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    textarea:focus, input[type="text"]:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--primary-hover);
+    }
+
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--bg);
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    /* Skills Tags */
+    .skills-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+      min-height: 32px;
+    }
+
+    .skill-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 12px;
+      background: #EFF6FF;
+      color: var(--primary);
+      border-radius: 16px;
+      font-size: 12px;
+      font-weight: 500;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.9); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    /* Job Cards */
+    .jobs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 16px;
+    }
+
+    .job-card {
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 16px;
+      border-left: 4px solid var(--border);
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      transition: all 0.2s;
+      animation: slideIn 0.4s ease backwards;
+    }
+
+    .job-card:hover {
+      box-shadow: var(--shadow-hover);
+      transform: translateY(-2px);
+    }
+
+    .job-card.score-high { border-left-color: var(--success); }
+    .job-card.score-medium { border-left-color: var(--warning); }
+    .job-card.score-low { border-left-color: var(--border); }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .job-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .job-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .job-company {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .score-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      background: #F3F4F6;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+
+    .score-badge.score-high {
+      background: #ECFDF5;
+      color: var(--success);
+    }
+
+    .score-badge.score-medium {
+      background: #FEF3C7;
+      color: #B45309;
+    }
+
+    .job-skills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 8px;
+    }
+
+    .job-skill {
+      padding: 2px 8px;
+      background: var(--bg);
+      border-radius: 4px;
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .job-link {
+      display: inline-block;
+      margin-top: 12px;
+      font-size: 13px;
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    .job-link:hover {
+      text-decoration: underline;
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--text-secondary);
+    }
+
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+
+    /* Cover Letter Panel */
+    .cover-letter-content {
+      background: var(--bg);
+      border-radius: 8px;
+      padding: 20px;
+      white-space: pre-wrap;
+      font-size: 14px;
+      line-height: 1.7;
+      margin-bottom: 16px;
+    }
+
+    .cover-letter-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .copy-btn {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+
+    /* Progress Steps */
+    .progress-steps {
+      display: flex;
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+
+    .progress-step {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .progress-step.active {
+      color: var(--primary);
+      font-weight: 500;
+    }
+
+    .progress-step.completed {
+      color: var(--success);
+    }
+
+    .step-number {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .progress-step.active .step-number {
+      background: var(--primary);
+      color: white;
+    }
+
+    .progress-step.completed .step-number {
+      background: var(--success);
+      color: white;
+    }
+
+    .step-connector {
+      width: 40px;
+      height: 2px;
+      background: var(--border);
+    }
+
+    .progress-step.completed + .step-connector {
+      background: var(--success);
+    }
+
+    /* Spinner */
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Hidden */
+    .hidden { display: none !important; }
+
+    /* Stats Row */
+    .stats-row {
+      display: flex;
+      gap: 24px;
+      margin-top: 12px;
+    }
+
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .stat-value {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <div class="logo-icon">JH</div>
+      <h1 class="logo">JobHunter Agent</h1>
+    </div>
+    <div class="status-badge" id="statusBadge">
+      <span class="status-dot"></span>
+      <span id="statusText">Ready</span>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="progress-steps">
+      <div class="progress-step active" id="step1">
+        <span class="step-number">1</span>
+        <span>Resume</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="progress-step" id="step2">
+        <span class="step-number">2</span>
+        <span>Search</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="progress-step" id="step3">
+        <span class="step-number">3</span>
+        <span>Match</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="progress-step" id="step4">
+        <span class="step-number">4</span>
+        <span>Apply</span>
+      </div>
+    </div>
+
+    <!-- Resume Section -->
+    <section class="card" id="resumeSection">
+      <h2 class="card-title">
+        <span class="card-title-icon">📄</span>
+        Resume
+      </h2>
+      <div class="input-group">
+        <label class="input-label">Paste your resume text</label>
+        <textarea 
+          id="resumeInput" 
+          rows="8" 
+          placeholder="Paste your resume content here... The agent will extract your skills and experience."
+        ></textarea>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-primary" id="parseResumeBtn" onclick="parseResume()">
+          Parse Resume
+        </button>
+      </div>
+      <div class="skills-container" id="skillsContainer"></div>
+    </section>
+
+    <!-- Job Search Section -->
+    <section class="card" id="searchSection">
+      <h2 class="card-title">
+        <span class="card-title-icon">🔍</span>
+        Job Search
+      </h2>
+      <div class="input-group">
+        <label class="input-label">What job are you looking for?</label>
+        <input 
+          type="text" 
+          id="jobSearchInput" 
+          placeholder="e.g., Python Developer, Full Stack Engineer, Data Scientist"
+        >
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-primary" id="searchJobsBtn" onclick="searchJobs()">
+          Search Jobs
+        </button>
+      </div>
+      <div class="stats-row hidden" id="searchStats">
+        <div class="stat-item">
+          <span>Jobs found:</span>
+          <span class="stat-value" id="jobsCount">0</span>
+        </div>
+        <div class="stat-item">
+          <span>Matched:</span>
+          <span class="stat-value" id="matchedCount">0</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Matched Jobs Section -->
+    <section class="card" id="jobsSection">
+      <h2 class="card-title">
+        <span class="card-title-icon">🎯</span>
+        Matched Jobs
+        <span id="jobCountBadge" style="margin-left: auto; font-weight: 400; color: var(--text-secondary);"></span>
+      </h2>
+      <div id="jobsContainer">
+        <div class="empty-state" id="jobsEmptyState">
+          <div class="empty-state-icon">💼</div>
+          <p>Enter your resume and search for jobs to see matches here</p>
+        </div>
+        <div class="jobs-grid hidden" id="jobsGrid"></div>
+      </div>
+    </section>
+
+    <!-- Cover Letter Section -->
+    <section class="card hidden" id="coverLetterSection">
+      <h2 class="card-title">
+        <span class="card-title-icon">✉️</span>
+        Cover Letter Generator
+      </h2>
+      <div class="cover-letter-header">
+        <div id="selectedJobInfo"></div>
+        <button class="btn btn-secondary copy-btn" onclick="copyCoverLetter()">
+          Copy
+        </button>
+      </div>
+      <div class="cover-letter-content" id="coverLetterContent"></div>
+    </section>
+  </main>
+
+  <script>
+    // A2UI-inspired State Management
+    const appState = {
+      resume: {
+        text: "",
+        parsed: false,
+        skills: []
+      },
+      jobs: {
+        query: "",
+        searching: false,
+        results: [],
+        matched: []
+      },
+      selectedJob: null,
+      coverLetter: null,
+      currentStep: 1
+    };
+
+    function setStatus(text, processing = false) {
+      const badge = document.getElementById('statusBadge');
+      const statusText = document.getElementById('statusText');
+      badge.classList.toggle('processing', processing);
+      statusText.textContent = text;
+    }
+
+    function setStep(step) {
+      appState.currentStep = step;
+      for (let i = 1; i <= 4; i++) {
+        const stepEl = document.getElementById(`step${i}`);
+        stepEl.classList.remove('active', 'completed');
+        if (i < step) stepEl.classList.add('completed');
+        else if (i === step) stepEl.classList.add('active');
+      }
+    }
+
+    function setLoading(btn, loading) {
+      btn.disabled = loading;
+      if (loading) {
+        btn.dataset.originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner"></span> Processing...';
+      } else {
+        btn.innerHTML = btn.dataset.originalText;
+      }
+    }
+
+    function renderSkills(skills) {
+      const container = document.getElementById('skillsContainer');
+      container.innerHTML = skills.map(skill => 
+        `<span class="skill-tag">${skill}</span>`
+      ).join('');
+    }
+
+    function getScoreClass(score) {
+      if (score >= 0.7) return 'score-high';
+      if (score >= 0.5) return 'score-medium';
+      return 'score-low';
+    }
+
+    function getScoreLabel(score) {
+      if (score >= 0.7) return 'Strong Match';
+      if (score >= 0.5) return 'Good Match';
+      return 'Partial Match';
+    }
+
+    async function parseResume() {
+      const btn = document.getElementById('parseResumeBtn');
+      const resumeText = document.getElementById('resumeInput').value.trim();
+      
+      if (!resumeText) {
+        alert('Please enter your resume text');
+        return;
+      }
+
+      setLoading(btn, true);
+      setStatus('Parsing resume...', true);
+
+      appState.resume.text = resumeText;
+
+      try {
+        // Call Python backend API
+        const response = await fetch('/api/parse_resume', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ resume_text: resumeText })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+          appState.resume.skills = data.skills;
+          appState.resume.parsed = true;
+          renderSkills(data.skills);
+          setStatus('Resume parsed', false);
+          setStep(2);
+        } else {
+          throw new Error(data.message || 'Failed to parse resume');
+        }
+      } catch (error) {
+        console.error('Parse error:', error);
+        setStatus('Error', false);
+        alert('Failed to parse resume: ' + error.message);
+      } finally {
+        setLoading(btn, false);
+      }
+    }
+
+    async function searchJobs() {
+      const btn = document.getElementById('searchJobsBtn');
+      const query = document.getElementById('jobSearchInput').value.trim();
+      
+      if (!query) {
+        alert('Please enter a job search query');
+        return;
+      }
+
+      setLoading(btn, true);
+      setStatus('Searching jobs...', true);
+
+      appState.jobs.query = query;
+
+      try {
+        // Call Python backend API to scrape jobs
+        const response = await fetch('/api/scrape_jobs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ search_query: query, max_results: 20 })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+          appState.jobs.results = data.jobs;
+          setStatus(`Found ${data.count} jobs`, false);
+          
+          // If resume is parsed, match jobs
+          if (appState.resume.parsed) {
+            await matchJobs();
+          } else {
+            renderJobs(appState.jobs.results, []);
+          }
+        } else {
+          throw new Error(data.message || 'Failed to search jobs');
+        }
+      } catch (error) {
+        console.error('Search error:', error);
+        setStatus('Error', false);
+        alert('Failed to search jobs: ' + error.message);
+      } finally {
+        setLoading(btn, false);
+      }
+    }
+
+    async function matchJobs() {
+      setStatus('Matching jobs...', true);
+
+      try {
+        const response = await fetch('/api/match_jobs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            resume_data: JSON.stringify(appState.resume),
+            jobs_data: JSON.stringify({ jobs: appState.jobs.results }),
+            min_score: 0.3
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+          appState.jobs.matched = data.all_matched_jobs;
+          renderJobs(appState.jobs.results, data.all_matched_jobs);
+          setStatus('Matching complete', false);
+          setStep(3);
+          
+          document.getElementById('jobsCount').textContent = appState.jobs.results.length;
+          document.getElementById('matchedCount').textContent = data.total_matched;
+          document.getElementById('searchStats').classList.remove('hidden');
+          document.getElementById('jobCountBadge').textContent = `(${data.total_matched} matched)`;
+        } else {
+          throw new Error(data.message || 'Failed to match jobs');
+        }
+      } catch (error) {
+        console.error('Match error:', error);
+        setStatus('Error', false);
+      }
+    }
+
+    function renderJobs(results, matchedJobs) {
+      const grid = document.getElementById('jobsGrid');
+      const emptyState = document.getElementById('jobsEmptyState');
+      
+      if (results.length === 0) {
+        grid.classList.add('hidden');
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      grid.classList.remove('hidden');
+      
+      const matchedMap = new Map(matchedJobs.map(j => [j.title + j.company, j]));
+
+      grid.innerHTML = results.map((job, index) => {
+        const matched = matchedMap.get(job.title + job.company);
+        const score = matched?.relevance_score || 0;
+        const matchedSkills = matched?.matched_skills || [];
+        const scoreClass = getScoreClass(score);
+        
+        return `
+          <div class="job-card ${scoreClass}" 
+               style="animation-delay: ${index * 0.05}s"
+               onclick="selectJob(${index})"
+               data-index="${index}">
+            <div class="job-header">
+              <div>
+                <div class="job-title">${job.title}</div>
+                <div class="job-company">${job.company}</div>
+              </div>
+              <span class="score-badge ${scoreClass}">${getScoreLabel(score)} ${Math.round(score * 100)}%</span>
+            </div>
+            ${matchedSkills.length > 0 ? `
+              <div class="job-skills">
+                ${matchedSkills.slice(0, 5).map(s => `<span class="job-skill">${s}</span>`).join('')}
+              </div>
+            ` : ''}
+            <a href="${job.url}" target="_blank" class="job-link" onclick="event.stopPropagation()">
+              View on OnlineJobs.ph
+            </a>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function selectJob(index) {
+      const job = appState.jobs.results[index];
+      const matched = appState.jobs.matched.find(m => m.title === job.title);
+      appState.selectedJob = { ...job, ...matched };
+      
+      // Highlight selected card
+      document.querySelectorAll('.job-card').forEach(card => {
+        card.style.borderLeftColor = card.classList.contains('score-high') ? 'var(--success)' :
+                                    card.classList.contains('score-medium') ? 'var(--warning)' : 'var(--border)';
+      });
+      const selectedCard = document.querySelector(`[data-index="${index}"]`);
+      if (selectedCard) selectedCard.style.borderLeftColor = 'var(--secondary)';
+      
+      await generateCoverLetter();
+    }
+
+    async function generateCoverLetter() {
+      if (!appState.selectedJob || !appState.resume.parsed) return;
+      
+      setStatus('Generating cover letter...', true);
+
+      try {
+        const response = await fetch('/api/generate_cover_letter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            job_data: JSON.stringify(appState.selectedJob),
+            resume_data: JSON.stringify(appState.resume)
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+          appState.coverLetter = data.cover_letter;
+          showCoverLetter(data);
+          setStatus('Cover letter ready', false);
+          setStep(4);
+        } else {
+          throw new Error(data.message || 'Failed to generate cover letter');
+        }
+      } catch (error) {
+        console.error('Cover letter error:', error);
+        setStatus('Error', false);
+        alert('Failed to generate cover letter: ' + error.message);
+      }
+    }
+
+    function showCoverLetter(data) {
+      const section = document.getElementById('coverLetterSection');
+      const content = document.getElementById('coverLetterContent');
+      const info = document.getElementById('selectedJobInfo');
+      
+      section.classList.remove('hidden');
+      info.textContent = `${data.job_title} at ${data.company}`;
+      content.textContent = data.cover_letter;
+      
+      section.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function copyCoverLetter() {
+      if (appState.coverLetter) {
+        navigator.clipboard.writeText(appState.coverLetter).then(() => {
+          const btn = document.querySelector('.copy-btn');
+          const original = btn.textContent;
+          btn.textContent = 'Copied!';
+          setTimeout(() => btn.textContent = original, 2000);
+        });
+      }
+    }
+
+    // Load state from localStorage on init
+    function init() {
+      const saved = localStorage.getItem('jobhunter_state');
+      if (saved) {
+        try {
+          const state = JSON.parse(saved);
+          if (state.resume?.text) {
+            document.getElementById('resumeInput').value = state.resume.text;
+            if (state.resume.skills?.length) {
+              appState.resume = state.resume;
+              renderSkills(state.resume.skills);
+              setStep(state.currentStep || 1);
+            }
+          }
+        } catch (e) {}
+      }
+
+      // Save state on changes
+      setInterval(() => {
+        localStorage.setItem('jobhunter_state', JSON.stringify({
+          resume: appState.resume,
+          currentStep: appState.currentStep
+        }));
+      }, 1000);
+    }
+
+    init();
+  </script>
+</body>
+</html>

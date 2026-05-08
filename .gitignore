@@ -1,0 +1,46 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+*.venv
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment variables
+.env
+.env.local
+
+# Browser data (cookies - sensitive)
+browser_data/cookies.json
+
+# Test outputs
+scraped_jobs.json
+*.log
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# uv
+.uv/
+
+# Node (for any frontend deps)
+node_modules/
+
+# Knowledge graph (generated)
+graphify-out/
