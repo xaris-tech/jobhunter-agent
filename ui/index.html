@@ -559,6 +559,15 @@
         Resume
       </h2>
       <div class="input-group">
+        <label class="input-label">Your Name</label>
+        <input 
+          type="text" 
+          id="userName" 
+          placeholder="Enter your full name for applications"
+          style="padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; width: 100%;"
+        >
+      </div>
+      <div class="input-group" style="margin-top: 16px;">
         <label class="input-label">Upload your resume (PDF or DOCX)</label>
         <div class="upload-area" id="uploadArea">
           <input type="file" id="resumeFile" accept=".pdf,.docx,.doc,.txt" style="display: none;">
@@ -687,7 +696,8 @@
       resume: {
         text: "",
         parsed: false,
-        skills: []
+        skills: [],
+        name: ""
       },
       jobs: {
         query: "",
@@ -1165,19 +1175,68 @@
     }
 
     function sendApplication() {
-      const summary = document.getElementById('cvSummary').textContent;
-      const skills = document.getElementById('cvSkills').textContent;
+      const job = appState.selectedJob;
+      const cvData = appState.personalizedCV;
+      const userName = document.getElementById('userName').value.trim() || 'Your Name';
       
-      navigator.clipboard.writeText(`Summary:\n${summary}\n\nSkills:\n${skills}`).then(() => {
+      if (!job || !cvData) {
+        alert('No CV data available');
+        return;
+      }
+      
+      // Build email-style application (OLJ style)
+      const experienceText = cvData.experience.map(exp => 
+        `${exp.title} at ${exp.company}:\n${exp.highlights.map(h => '• ' + h).join('\n')}`
+      ).join('\n\n');
+      
+      const emailBody = `Subject: Application for ${job.title} - ${userName}
+
+Hi,
+
+I am writing to express my interest in the ${job.title} position at ${job.company}.
+
+PROFESSIONAL SUMMARY:
+${cvData.summary}
+
+WORK EXPERIENCE:
+${experienceText}
+
+KEY SKILLS:
+${cvData.skills}
+
+${job.work_type ? `Employment Type: ${job.work_type}\n` : ''}${job.location ? `Location: ${job.location}\n` : ''}
+
+${job.url ? `Source: ${job.url}` : ''}
+
+Thank you for considering my application. I am available for an interview at your convenience and look forward to hearing from you.
+
+Best regards,
+${userName}`;
+      
+      // Create mailto link
+      const subjectEncoded = encodeURIComponent(`Application for ${job.title}`);
+      const bodyEncoded = encodeURIComponent(emailBody);
+      
+      window.location.href = `mailto:?subject=${subjectEncoded}&body=${bodyEncoded}`;
+      
+      // Also copy to clipboard as backup
+      navigator.clipboard.writeText(emailBody).then(() => {
         const btn = document.getElementById('sendAppBtn');
         const original = btn.textContent;
-        btn.textContent = 'Copied!';
-        setTimeout(() => {
-          btn.textContent = original;
-          document.getElementById('cvPreviewSection').classList.add('hidden');
-        }, 2000);
+        btn.textContent = 'Opening email...';
+        setTimeout(() => btn.textContent = original, 3000);
       });
     }
+
+    // Store personalized CV for email
+    appState.personalizedCV = null;
+
+    // Update showCVPreview to store CV data
+    const originalShowCVPreview = showCVPreview;
+    showCVPreview = function(data) {
+      originalShowCVPreview(data);
+      appState.personalizedCV = data.personalized_cv;
+    };
 
     // Load state from localStorage on init
     function init() {
