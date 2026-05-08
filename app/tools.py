@@ -2,18 +2,27 @@ import json
 import os
 from typing import Dict, Any
 from pathlib import Path
-from google import genai
 
 # Load .env file
 from dotenv import load_dotenv
 
 load_dotenv()
 
-client = (
-    genai.Client(api_key=os.getenv("GEMINI_API_KEY", ""))
-    if os.getenv("GEMINI_API_KEY")
-    else None
-)
+# Initialize clients
+gemini_client = None
+openai_client = None
+
+if os.getenv("GEMINI_API_KEY"):
+    from google import genai
+
+    gemini_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+if os.getenv("OPENROUTER_API_KEY"):
+    from openai import OpenAI
+
+    openai_client = OpenAI(
+        api_key=os.getenv("OPENROUTER_API_KEY"), base_url="https://openrouter.ai/api/v1"
+    )
 
 
 def _scrape_jobs_sync(search_query: str, max_results: int) -> list:
@@ -473,17 +482,44 @@ Rules:
 - Return ONLY valid JSON, no markdown code blocks or explanation"""
 
     try:
-        if not client:
+        result_text = None
+
+        # Try OpenRouter first
+        if openai_client:
+            try:
+                response = openai_client.chat.completions.create(
+                    model="openrouter/auto",
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": "You are a professional CV writer. Return ONLY valid JSON, no markdown.",
+                        },
+                        {"role": "user", "content": prompt},
+                    ],
+                    max_tokens=2000,
+                    temperature=0.7,
+                )
+                result_text = response.choices[0].message.content
+            except Exception as e:
+                print(f"OpenRouter error: {e}")
+
+        # Fall back to Gemini
+        if not result_text and gemini_client:
+            try:
+                response = gemini_client.models.generate_content(
+                    model="gemini-2.5-flash", contents=prompt
+                )
+                result_text = response.text.strip()
+            except Exception as e:
+                print(f"Gemini error: {e}")
+
+        if not result_text:
             return json.dumps(
-                {"status": "error", "message": "GEMINI_API_KEY not configured"},
+                {"status": "error", "message": "No AI provider available"},
                 indent=2,
             )
 
-        response = client.models.generate_content(
-            model="gemini-2.5-flash", contents=prompt
-        )
-
-        result_text = response.text.strip()
+        # Clean response
         if result_text.startswith("```"):
             result_text = result_text.split("```")[1]
             if result_text.startswith("json"):
@@ -491,7 +527,6 @@ Rules:
             result_text = result_text.strip().rstrip("```")
 
         result = json.loads(result_text)
-
         return json.dumps({"status": "success", **result}, indent=2)
 
     except Exception as e:
@@ -499,21 +534,6 @@ Rules:
             {
                 "status": "error",
                 "message": f"Failed to generate personalized CV: {str(e)}",
-                "personalized_cv": {
-                    "summary": f"Experienced professional interested in {job_title} role at {company}.",
-                    "experience": [
-                        {
-                            "title": "Experience",
-                            "company": "Previous employer",
-                            "highlights": skills[:3],
-                        }
-                    ],
-                    "skills": ", ".join(skills[:10])
-                    if skills
-                    else "Various technical skills",
-                },
-                "ats_score": 50,
-                "match_insights": "Fallback: using basic matching due to AI generation error",
             },
             indent=2,
         )
