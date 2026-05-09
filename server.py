@@ -1,6 +1,5 @@
 """Backend API server for JobHunter Agent UI."""
 
-import asyncio
 import json
 from pathlib import Path
 
@@ -78,7 +77,7 @@ async def api_upload_resume(file: UploadFile = File(...)):
     else:
         try:
             text = content.decode("utf-8")
-        except:
+        except Exception:
             text = content.decode("latin-1")
 
     result = await parse_resume(resume_text=text)
@@ -122,7 +121,8 @@ async def api_customize_cv(request: Request):
     job_data = body.get("job_data", "{}")
     resume_data = body.get("resume_data", "{}")
     user_name = body.get("user_name", "")
-    result = await customize_cv(job_data, resume_data, user_name)
+    format_style = body.get("format_style", "paragraph")
+    result = await customize_cv(job_data, resume_data, user_name, format_style)
     return json.loads(result)
 
 

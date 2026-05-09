@@ -778,6 +778,13 @@
         <label class="input-label">Subject</label>
         <div id="emailSubject" style="padding: 8px 12px; background: var(--bg); border-radius: 6px; font-weight: 500;"></div>
       </div>
+      <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 12px;">
+        <label class="input-label" style="margin: 0;">Format:</label>
+        <select id="formatStyle" style="padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); font-size: 13px;">
+          <option value="paragraph">Paragraph Style (Recommended)</option>
+          <option value="json">Structured JSON</option>
+        </select>
+      </div>
       <div class="cover-letter-content" id="emailBody" style="max-height: 400px; overflow-y: auto;"></div>
       <div class="btn-group" style="margin-top: 20px;">
         <button class="btn btn-secondary" id="regenerateBtn" onclick="regenerateEmail()">
@@ -1839,7 +1846,8 @@
               skills: appState.resume.skills,
               name: appState.resume.name
             }),
-            user_name: appState.resume.name
+            user_name: appState.resume.name,
+            format_style: document.getElementById('formatStyle')?.value || 'paragraph'
           })
         });
         

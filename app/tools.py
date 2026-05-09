@@ -648,7 +648,10 @@ Best regards,
 
 
 async def customize_cv(
-    job_data: str = "{}", resume_data: str = "{}", user_name: str = ""
+    job_data: str = "{}",
+    resume_data: str = "{}",
+    user_name: str = "",
+    format_style: str = "paragraph",
 ) -> Dict[str, Any]:
     """
     Generate a complete email-style job application using AI.
@@ -669,6 +672,8 @@ async def customize_cv(
             {"status": "error", "message": "Invalid JSON in job or resume data"},
             indent=2,
         )
+
+    format_style = format_style or "paragraph"
 
     job_title = job.get("title", "the position")
     company = job.get("company", "the company")
@@ -702,7 +707,42 @@ async def customize_cv(
         resume_context += f"\nEducation: {'; '.join(resume_education[:2])}"
     resume_context += f"\n\nFull Resume:\n{resume_text[:2500]}"
 
-    prompt = f"""You are a professional job application writer for OnlineJobs.ph.
+    if format_style == "paragraph":
+        prompt = f"""Write a professional job application email in this exact format (no JSON):
+
+Subject: Application for [Job Title] - [Your Name]
+
+Hi,
+
+[2-3 sentences: state interest in the position, mention how you found it, briefly state your key qualification]
+
+[2-3 sentences: highlight qualifications that directly match the job requirements. Use keywords from the job posting]
+
+[2-3 sentences: summarize your most relevant work experience that applies to this role]
+
+[One line: comma-separated list of 4-6 skills you have that match the job requirements]
+
+[I am fully available to work (remote/hybrid/onsite) and can accommodate (any specific hours/timezone mentioned)].
+
+Thank you for considering my application. I look forward to discussing how my skills can contribute to your team.
+
+Best regards,
+[Your Full Name]
+[Your contact info]
+
+Job Requirements:
+{job_description}
+
+Your Resume:
+{resume_context}
+
+Rules:
+- Write based ONLY on what's in the job requirements
+- Only mention skills/tools that appear in the job posting
+- Keep email under 400 words
+- Use professional but friendly tone"""
+    else:
+        prompt = f"""You are a professional job application writer for OnlineJobs.ph.
 
 CRITICAL INSTRUCTION: Write the application based ONLY on the job requirements below. Do NOT invent job requirements or company details. Do NOT mention skills or experience from your resume that are NOT mentioned in the job posting.
 
@@ -783,6 +823,33 @@ Rules:
             if result_text.startswith("json"):
                 result_text = result_text[4:]
             result_text = result_text.strip().rstrip("```").rstrip()
+
+        if format_style == "paragraph":
+            subject_match = (
+                result_text.split("\n")[0]
+                if result_text
+                else f"Application for {job_title}"
+            )
+            if "Subject:" in subject_match:
+                subject = subject_match.split("Subject:")[1].strip()
+            else:
+                subject = f"Application for {job_title}"
+
+            email_body = result_text.replace(f"Subject: {subject}", "").strip()
+
+            return json.dumps(
+                {
+                    "status": "success",
+                    "email": {
+                        "subject": subject,
+                        "body": email_body,
+                        "full_email": f"Subject: {subject}\n\n{email_body}",
+                    },
+                    "applicant_name": applicant_name,
+                    "match_score": job.get("relevance_score", 0),
+                },
+                indent=2,
+            )
 
         result = json.loads(result_text)
 
