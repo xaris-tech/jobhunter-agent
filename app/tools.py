@@ -708,39 +708,19 @@ async def customize_cv(
     resume_context += f"\n\nFull Resume:\n{resume_text[:2500]}"
 
     if format_style == "paragraph":
-        prompt = f"""Write a professional job application email in this exact format (no JSON):
+        prompt = f"""Read the job posting below carefully. Then write a complete job application that follows ANY specific instructions mentioned in the job posting (like "Start with: CODEX MODE" or "How to Apply" requirements).
 
-Subject: Application for [Job Title] - [Your Name]
-
-Hi,
-
-[2-3 sentences: state interest in the position, mention how you found it, briefly state your key qualification]
-
-[2-3 sentences: highlight qualifications that directly match the job requirements. Use keywords from the job posting]
-
-[2-3 sentences: summarize your most relevant work experience that applies to this role]
-
-[One line: comma-separated list of 4-6 skills you have that match the job requirements]
-
-[I am fully available to work (remote/hybrid/onsite) and can accommodate (any specific hours/timezone mentioned)].
-
-Thank you for considering my application. I look forward to discussing how my skills can contribute to your team.
-
-Best regards,
-[Your Full Name]
-[Your contact info]
-
-Job Requirements:
+Job Posting (follow any special instructions in this):
+---
 {job_description}
+---
 
-Your Resume:
+Candidate's Resume:
 {resume_context}
 
-Rules:
-- Write based ONLY on what's in the job requirements
-- Only mention skills/tools that appear in the job posting
-- Keep email under 400 words
-- Use professional but friendly tone"""
+Write the full application email. If the job posting has specific application requirements (like what to include, what to start with, specific questions to answer), make sure to address ALL of them in your response.
+
+Do NOT use any template - adapt your writing to match what the job posting asks for."""
     else:
         prompt = f"""You are a professional job application writer for OnlineJobs.ph.
 
