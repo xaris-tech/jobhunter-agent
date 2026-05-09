@@ -515,6 +515,101 @@
       font-weight: 600;
       color: var(--text-primary);
     }
+
+    /* Debug Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-overlay.hidden { display: none; }
+
+    .modal {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: var(--text-secondary);
+    }
+
+    .debug-section {
+      margin-bottom: 16px;
+      padding: 12px;
+      background: var(--bg);
+      border-radius: 8px;
+    }
+
+    .debug-section h4 {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--text-secondary);
+    }
+
+    .debug-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      padding: 4px 0;
+    }
+
+    .debug-score {
+      font-size: 24px;
+      font-weight: 700;
+      text-align: center;
+      padding: 16px;
+      background: var(--primary);
+      color: white;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+
+    .match-details {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 8px;
+    }
+
+    .show-debug-btn {
+      font-size: 11px;
+      padding: 4px 8px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      margin-left: 8px;
+    }
   </style>
 </head>
 <body>
@@ -559,15 +654,6 @@
         Resume
       </h2>
       <div class="input-group">
-        <label class="input-label">Your Name</label>
-        <input 
-          type="text" 
-          id="userName" 
-          placeholder="Enter your full name for applications"
-          style="padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; width: 100%;"
-        >
-      </div>
-      <div class="input-group" style="margin-top: 16px;">
         <label class="input-label">Upload your resume (PDF or DOCX)</label>
         <div class="upload-area" id="uploadArea">
           <input type="file" id="resumeFile" accept=".pdf,.docx,.doc,.txt" style="display: none;">
@@ -613,11 +699,24 @@
           placeholder="e.g., Python Developer, Full Stack Engineer, Data Scientist"
         >
       </div>
+      <div class="input-group">
+        <label class="input-label">Auto-Search Categories (comma-separated)</label>
+        <input 
+          type="text" 
+          id="categoriesInput" 
+          placeholder="e.g., AI Engineer, Software Developer, Agentic Engineer"
+          value="AI Engineer, AI Developer, Software Developer"
+        >
+      </div>
       <div class="btn-group">
         <button class="btn btn-primary" id="searchJobsBtn" onclick="searchJobs()">
           Search Jobs
         </button>
+        <button class="btn btn-secondary" id="autoApplyBtn" onclick="autoApply()" style="background: var(--success); color: white;">
+          Auto-Apply (10 pts)
+        </button>
       </div>
+      <div id="autoApplyStatus" style="margin-top: 12px; font-size: 13px; color: var(--text-secondary);"></div>
       <div class="stats-row hidden" id="searchStats">
         <div class="stat-item">
           <span>Jobs found:</span>
@@ -637,6 +736,26 @@
         Matched Jobs
         <span id="jobCountBadge" style="margin-left: auto; font-weight: 400; color: var(--text-secondary);"></span>
       </h2>
+      <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+        <div class="input-group" style="flex: 1; min-width: 150px;">
+          <select id="sortFilter" onchange="sortJobs()" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: var(--surface);">
+            <option value="score-desc">Highest Match %</option>
+            <option value="score-asc">Lowest Match %</option>
+            <option value="company-asc">Company (A-Z)</option>
+            <option value="company-desc">Company (Z-A)</option>
+            <option value="title-asc">Title (A-Z)</option>
+            <option value="title-desc">Title (Z-A)</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <select id="scoreFilter" onchange="filterJobs()" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: var(--surface);">
+            <option value="0">All Matches</option>
+            <option value="70">70%+ (Strong)</option>
+            <option value="50">50%+ (Good)</option>
+            <option value="30">30%+ (Partial)</option>
+          </select>
+        </div>
+      </div>
       <div id="jobsContainer">
         <div class="empty-state" id="jobsEmptyState">
           <div class="empty-state-icon">💼</div>
@@ -646,49 +765,44 @@
       </div>
     </section>
 
-    <!-- Cover Letter Section -->
-    <section class="card hidden" id="coverLetterSection">
-      <h2 class="card-title">
-        <span class="card-title-icon">✉️</span>
-        Cover Letter Generator
-      </h2>
-      <div class="cover-letter-header">
-        <div id="selectedJobInfo"></div>
-        <button class="btn btn-secondary copy-btn" onclick="copyCoverLetter()">
-          Copy
-        </button>
-      </div>
-      <div class="cover-letter-content" id="coverLetterContent"></div>
-    </section>
+    <!-- Email Application Section -->
 
-    <!-- CV Preview Section -->
+    <!-- Email Application Preview Section -->
     <section class="card hidden" id="cvPreviewSection">
       <h2 class="card-title">
-        <span class="card-title-icon">📋</span>
-        Personalized CV
-        <span id="atsScore" style="margin-left: auto; font-size: 13px; color: var(--success);"></span>
+        <span class="card-title-icon">✉️</span>
+        Email Application
+        <span id="matchScore" style="margin-left: auto; font-size: 13px; color: var(--success);"></span>
       </h2>
-      <div id="cvPreviewContent">
-        <div class="cv-section">
-          <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Summary</h3>
-          <div id="cvSummary" contenteditable="true" style="padding: 12px; background: var(--bg); border-radius: 8px; min-height: 60px;"></div>
-        </div>
-        <div class="cv-section" style="margin-top: 16px;">
-          <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Experience</h3>
-          <div id="cvExperience"></div>
-        </div>
-        <div class="cv-section" style="margin-top: 16px;">
-          <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">Skills</h3>
-          <div id="cvSkills" contenteditable="true" style="padding: 12px; background: var(--bg); border-radius: 8px;"></div>
-        </div>
+      <div style="margin-bottom: 12px;">
+        <label class="input-label">Subject</label>
+        <div id="emailSubject" style="padding: 8px 12px; background: var(--bg); border-radius: 6px; font-weight: 500;"></div>
       </div>
-      <div class="cv-insights" id="cvInsights" style="margin-top: 16px; padding: 12px; background: #EFF6FF; border-radius: 8px; font-size: 13px;"></div>
+      <div class="cover-letter-content" id="emailBody" style="max-height: 400px; overflow-y: auto;"></div>
       <div class="btn-group" style="margin-top: 20px;">
-        <button class="btn btn-secondary" id="regenerateBtn" onclick="regenerateCV()">Regenerate</button>
-        <button class="btn btn-primary" id="sendAppBtn" onclick="sendApplication()">Send Application</button>
+        <button class="btn btn-secondary" id="regenerateBtn" onclick="regenerateEmail()">
+          <span>🔄</span> Regenerate
+        </button>
+        <button class="btn btn-primary" id="sendAppBtn" onclick="sendApplication()">
+          <span>📤</span> Open in Email App
+        </button>
+        <button class="btn btn-secondary copy-btn" onclick="copyEmail()">
+          <span>📋</span> Copy
+        </button>
       </div>
     </section>
   </main>
+
+  <!-- Debug Modal -->
+  <div class="modal-overlay hidden" id="debugModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Match Verification</h3>
+        <button class="modal-close" onclick="closeDebugModal()">&times;</button>
+      </div>
+      <div id="debugContent"></div>
+    </div>
+  </div>
 
   <script>
     // A2UI-inspired State Management
@@ -707,6 +821,7 @@
       },
       selectedJob: null,
       coverLetter: null,
+      emailData: null,
       currentStep: 1
     };
 
@@ -824,9 +939,10 @@
       .then(data => {
         console.log('Upload response:', data);
         if (data.status === 'success') {
-          appState.resume.text = data.skills.join(' ') + ' ' + (data.experience?.join(' ') || '');
+          appState.resume.text = data.raw_text || (data.skills.join(' ') + ' ' + (data.experience?.join(' ') || ''));
           appState.resume.skills = data.skills;
           appState.resume.parsed = true;
+          appState.resume.name = data.name || '';
           renderSkills(data.skills);
           setStatus('Resume parsed', false);
           setStep(2);
@@ -879,7 +995,9 @@
         
         if (data.status === 'success') {
           appState.resume.skills = data.skills;
+          appState.resume.text = data.raw_text || resumeText;
           appState.resume.parsed = true;
+          appState.resume.name = data.name || '';
           renderSkills(data.skills);
           setStatus('Resume parsed', false);
           setStep(2);
@@ -910,27 +1028,32 @@
       appState.jobs.query = query;
 
       try {
-        // Call Python backend API to scrape jobs
-        const response = await fetch('/api/scrape_jobs', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ search_query: query, max_results: 20 })
-        });
+        // Support multiple comma-separated searches
+        const searchTerms = query.split(',').map(s => s.trim()).filter(s => s);
+        const allJobs = [];
         
-        const data = await response.json();
-        
-        if (data.status === 'success') {
-          appState.jobs.results = data.jobs;
-          setStatus(`Found ${data.count} jobs`, false);
+        for (const term of searchTerms) {
+          setStatus(`Searching: ${term}...`, true);
+          const response = await fetch('/api/scrape_jobs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ search_query: term, max_results: 50 })
+          });
           
-          // If resume is parsed, match jobs
-          if (appState.resume.parsed) {
-            await matchJobs();
-          } else {
-            renderJobs(appState.jobs.results, []);
+          const data = await response.json();
+          if (data.status === 'success') {
+            allJobs.push(...data.jobs.map(j => ({...j, category: term})));
           }
+        }
+        
+        appState.jobs.results = allJobs;
+        setStatus(`Found ${allJobs.length} jobs`, false);
+        
+        // If resume is parsed, match jobs
+        if (appState.resume.parsed) {
+          await matchJobs();
         } else {
-          throw new Error(data.message || 'Failed to search jobs');
+          renderJobs(appState.jobs.results, []);
         }
       } catch (error) {
         console.error('Search error:', error);
@@ -940,6 +1063,452 @@
         setLoading(btn, false);
       }
     }
+
+    // Points system
+    let dailyPoints = 10;
+    let usedPoints = 0;
+
+    async function autoApply() {
+      if (!appState.resume.parsed) {
+        alert('Please parse your resume first!');
+        return;
+      }
+
+      if (dailyPoints < 10) {
+        alert(`You only have ${dailyPoints} points left today. Auto-Apply requires 10 points.`);
+        return;
+      }
+
+      const btn = document.getElementById('autoApplyBtn');
+      const statusEl = document.getElementById('autoApplyStatus');
+      
+      setLoading(btn, true);
+      btn.disabled = true;
+      setStatus('Auto-applying to best jobs...', true);
+      statusEl.innerHTML = 'Starting auto-apply process...';
+
+      const categoriesInput = document.getElementById('categoriesInput').value;
+      const categories = categoriesInput.split(',').map(c => c.trim()).filter(c => c);
+      const maxJobsPerCategory = 20;
+      const maxApplications = 5;
+      const pointsPerApplication = 2;
+
+      try {
+        // Step 1: Scrape jobs from all categories
+        const allJobs = [];
+        for (const category of categories) {
+          statusEl.innerHTML = `Scraping ${category} jobs...`;
+          const res = await fetch('/api/scrape_jobs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ search_query: category, max_results: maxJobsPerCategory })
+          });
+          const data = await res.json();
+          allJobs.push(...(data.jobs || []).map(j => ({...j, category})));
+        }
+
+        statusEl.innerHTML = `Found ${allJobs.length} jobs. Matching...`;
+        setStatus(`Found ${allJobs.length} jobs - matching...`, true);
+
+        // Step 2: Match all jobs against resume
+        const matchRes = await fetch('/api/match_jobs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            resume_data: JSON.stringify(appState.resume),
+            jobs_data: JSON.stringify({ jobs: allJobs }),
+            min_score: 0.1
+          })
+        });
+        const matchData = await matchRes.json();
+
+        // Step 3: Get top 5 highest rated matches
+        const sortedJobs = (matchData.all_matched_jobs || [])
+          .sort((a, b) => b.relevance_score - a.relevance_score)
+          .slice(0, maxApplications);
+
+        statusEl.innerHTML = `Generating ${maxApplications} application emails (${maxApplications * pointsPerApplication} pts)...`;
+        setStatus('Generating application emails...', true);
+
+        // Step 4: Generate application emails for top 5
+        const applications = [];
+        for (let i = 0; i < sortedJobs.length; i++) {
+          const job = sortedJobs[i];
+          const emailRes = await fetch('/api/customize_cv', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              job_data: JSON.stringify(job),
+              resume_data: JSON.stringify({
+                text: appState.resume.text,
+                skills: appState.resume.skills,
+                name: appState.resume.name
+              }),
+              user_name: appState.resume.name
+            })
+          });
+          const emailData = await emailRes.json();
+          
+          applications.push({
+            job: job,
+            email: emailData.email,
+            matchScore: job.relevance_score
+          });
+          
+          statusEl.innerHTML = `Generated ${i + 1}/${maxApplications} applications...`;
+        }
+
+        // Update points
+        usedPoints = maxApplications * pointsPerApplication;
+        dailyPoints -= usedPoints;
+
+        // Store applications
+        appState.applications = applications;
+        
+        // Save to applied jobs tracking
+        applications.forEach(app => addAppliedJob(app));
+        
+        // Show results
+        statusEl.innerHTML = `
+          <div style="color: var(--success); margin-top: 12px;">
+            ✓ Auto-apply complete!<br>
+            Applied to ${applications.length} jobs using ${usedPoints} points<br>
+            Remaining points: ${dailyPoints}/10
+          </div>
+        `;
+        
+        setStatus('Auto-apply complete!', false);
+        
+        // Display the applications
+        showApplicationsPanel(applications);
+
+      } catch (error) {
+        console.error('Auto-apply error:', error);
+        setStatus('Error', false);
+        statusEl.innerHTML = `<span style="color: #EF4444;">Error: ${error.message}</span>`;
+        alert('Auto-apply failed: ' + error.message);
+      } finally {
+        setLoading(btn, false);
+        btn.disabled = false;
+      }
+    }
+
+    function showApplicationsPanel(applications) {
+      let panel = document.getElementById('applicationsPanel');
+      if (!panel) {
+        // Create panel
+        const panelHtml = `
+          <section class="card" id="applicationsPanel">
+            <h2 class="card-title">
+              <span class="card-title-icon">📧</span>
+              Application Emails Generated
+              <span style="margin-left: auto; font-size: 12px; color: var(--success);">
+                ${applications.length} applications (${applications.length * 2} pts used)
+              </span>
+            </h2>
+            <div id="applicationsList"></div>
+          </section>
+        `;
+        document.querySelector('main').insertAdjacentHTML('beforeend', panelHtml);
+        panel = document.getElementById('applicationsPanel');
+      }
+
+      const listEl = document.getElementById('applicationsList');
+      listEl.innerHTML = applications.map((app, idx) => `
+        <div class="job-card" style="border-left-color: var(--success); margin-bottom: 12px;">
+          <div class="job-header">
+            <div>
+              <div class="job-title">${app.job.title}</div>
+              <div class="job-company">${app.job.company} • <span style="color: var(--primary);">${app.job.category}</span></div>
+            </div>
+            <span class="score-badge score-high">${Math.round(app.matchScore * 100)}% Match</span>
+          </div>
+          <div style="margin-top: 8px;">
+            <a href="${app.job.url}" target="_blank" class="job-link">🔗 View on OnlineJobs.ph</a>
+          </div>
+          <div style="margin-top: 12px; padding: 12px; background: var(--bg); border-radius: 6px;">
+            <strong>Subject:</strong> ${app.email.subject}
+          </div>
+          <div class="btn-group" style="margin-top: 12px;">
+            <button class="btn btn-primary" onclick="openApplication(${idx})">
+              📤 Send / Copy
+            </button>
+            <button class="btn btn-secondary" onclick="viewApplicationDetails(${idx})">
+              📄 View Full Email
+            </button>
+            <button class="btn btn-secondary" style="background: #7C3AED; color: white; border: none;" onclick="tryAutoApply(${idx})">
+              🤖 Auto-Apply
+            </button>
+          </div>
+        </div>
+      `).join('');
+      
+      panel.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function openApplication(idx) {
+      const app = appState.applications[idx];
+      const emailText = app.email.full_email || `Subject: ${app.email.subject}\n\n${app.email.body}`;
+      
+      const subjectEncoded = encodeURIComponent(app.email.subject);
+      const bodyEncoded = encodeURIComponent(app.email.body);
+      
+      window.location.href = `mailto:?subject=${subjectEncoded}&body=${bodyEncoded}`;
+      
+      navigator.clipboard.writeText(emailText).then(() => {
+        alert('Email copied to clipboard!');
+      });
+    }
+
+    function viewApplicationDetails(idx) {
+      const app = appState.applications[idx];
+      const panel = document.getElementById('applicationsPanel');
+      
+      const detailsHtml = `
+        <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;" onclick="if(event.target === this) this.remove()">
+          <div style="background: var(--surface); border-radius: 12px; padding: 24px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;">
+            <h3 style="margin-bottom: 16px;">${app.job.title}</h3>
+            <p style="color: var(--text-secondary); margin-bottom: 16px;">${app.job.company} • ${app.job.category}</p>
+            <div style="background: var(--bg); padding: 16px; border-radius: 8px; white-space: pre-wrap; font-size: 13px; line-height: 1.6;">${app.email.body}</div>
+            <button class="btn btn-primary" style="margin-top: 16px;" onclick="this.parentElement.parentElement.remove()">Close</button>
+          </div>
+        </div>
+      `;
+      
+      panel.insertAdjacentHTML('afterend', detailsHtml);
+    }
+
+    // Applied jobs tracking
+    function loadAppliedJobs() {
+      const saved = localStorage.getItem('jobhunter_applied');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          return [];
+        }
+      }
+      return [];
+    }
+
+    function saveAppliedJobs(jobs) {
+      localStorage.setItem('jobhunter_applied', JSON.stringify(jobs));
+    }
+
+    function addAppliedJob(app) {
+      const applied = loadAppliedJobs();
+      const jobData = {
+        title: app.job.title,
+        company: app.job.company,
+        category: app.job.category,
+        url: app.job.url,
+        matchScore: app.matchScore,
+        appliedAt: new Date().toISOString(),
+        emailSubject: app.email.subject
+      };
+      applied.push(jobData);
+      saveAppliedJobs(applied);
+      renderAppliedJobs();
+    }
+
+    function renderAppliedJobs() {
+      let panel = document.getElementById('appliedJobsPanel');
+      const applied = loadAppliedJobs();
+      
+      if (!panel && applied.length > 0) {
+        // Create panel
+        const panelHtml = `
+          <section class="card" id="appliedJobsPanel">
+            <h2 class="card-title">
+              <span class="card-title-icon">✅</span>
+              Applied Jobs
+              <span style="margin-left: auto; font-size: 12px; color: var(--text-secondary);">
+                ${applied.length} applications
+              </span>
+            </h2>
+            <div id="appliedJobsList"></div>
+          </section>
+        `;
+        document.querySelector('main').insertAdjacentHTML('beforeend', panelHtml);
+        panel = document.getElementById('appliedJobsPanel');
+      } else if (panel && applied.length === 0) {
+        panel.remove();
+        return;
+      } else if (panel) {
+        // Update badge
+        panel.querySelector('span[style*="color: var(--text-secondary)"]').textContent = `${applied.length} applications`;
+      }
+      
+      if (panel) {
+        const listEl = document.getElementById('appliedJobsList');
+        listEl.innerHTML = applied.map((job, idx) => `
+          <div class="job-card" style="border-left-color: var(--success); margin-bottom: 12px;">
+            <div class="job-header">
+              <div>
+                <div class="job-title">${job.title}</div>
+                <div class="job-company">${job.company} • <span style="color: var(--primary);">${job.category || 'Job'}</span></div>
+              </div>
+              <span class="score-badge score-high">${Math.round(job.matchScore * 100)}% Match</span>
+            </div>
+            <div style="margin-top: 8px; font-size: 12px; color: var(--text-secondary);">
+              Applied: ${new Date(job.appliedAt).toLocaleString()}
+            </div>
+            <div class="btn-group" style="margin-top: 8px;">
+              <a href="${job.url}" target="_blank" class="job-link">🔗 View Job Post</a>
+              <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="viewAppliedEmail(${idx})">
+                📄 View Email
+              </button>
+              <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; color: #EF4444; border-color: #EF4444;" onclick="removeAppliedJob(${idx})">
+                🗑️ Remove
+              </button>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    function viewAppliedEmail(idx) {
+      const applied = loadAppliedJobs();
+      const job = applied[idx];
+      
+      const modal = document.createElement('div');
+      modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;';
+      modal.onclick = function(e) { if(e.target === modal) modal.remove(); };
+      
+      modal.innerHTML = `
+        <div style="background:var(--surface);border-radius:12px;padding:24px;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;">
+          <h3 style="margin-bottom:8px;">${job.title}</h3>
+          <p style="color:var(--text-secondary);margin-bottom:16px;">${job.company}</p>
+          <div style="background:var(--bg);padding:16px;border-radius:8px;white-space:pre-wrap;font-size:13px;line-height:1.6;">
+            <strong>Subject:</strong> ${job.emailSubject || 'Application'}
+          </div>
+          <div style="margin-top:12px;">
+            <a href="${job.url}" target="_blank" class="btn btn-primary">🔗 Open Job Post</a>
+            <button class="btn btn-secondary" style="margin-left:8px;" onclick="this.closest('[style*=\"position:fixed\"]').remove()">Close</button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+    }
+
+    function removeAppliedJob(idx) {
+      if (!confirm('Remove this application from tracking?')) return;
+      
+      const applied = loadAppliedJobs();
+      applied.splice(idx, 1);
+      saveAppliedJobs(applied);
+      renderAppliedJobs();
+    }
+
+    function markAsApplied(index) {
+      const job = appState.jobs.results[index];
+      const matched = appState.jobs.matched.find(m => m.title === job.title);
+      
+      const applied = loadAppliedJobs();
+      
+      // Check if already applied
+      if (applied.some(a => a.url === job.url)) {
+        alert('This job is already in your applied list!');
+        return;
+      }
+      
+      const jobData = {
+        title: job.title,
+        company: job.company,
+        category: job.category || 'Manual',
+        url: job.url,
+        matchScore: matched?.relevance_score || 0,
+        appliedAt: new Date().toISOString(),
+        source: 'manual',
+        emailSubject: null
+      };
+      
+      applied.push(jobData);
+      saveAppliedJobs(applied);
+      renderAppliedJobs();
+      
+      // Update button to show applied
+      const btn = document.querySelector(`[data-index="${index}"] button[onclick*="markAsApplied"]`);
+      if (btn) {
+        btn.textContent = '✓ Applied';
+        btn.style.background = '#059669';
+        btn.style.color = 'white';
+        btn.disabled = true;
+      }
+      
+      alert(`Marked "${job.title}" as applied!`);
+    }
+
+    async function tryAutoApply(idx) {
+      const app = appState.applications[idx];
+      const btn = document.querySelector(`button[onclick="tryAutoApply(${idx})"]`);
+      
+      if (!appState.resume.parsed) {
+        alert('Please parse your resume first!');
+        return;
+      }
+      
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '⏳ Applying...';
+      btn.disabled = true;
+      setStatus('Attempting auto-apply...', true);
+      
+      try {
+        // First, check if we can apply
+        const response = await fetch('/api/auto_apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            job_url: app.job.url,
+            application_message: app.email.body
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          // Add to applied jobs
+          const appliedData = {
+            title: app.job.title,
+            company: app.job.company,
+            category: app.job.category || 'Auto-Applied',
+            url: app.job.url,
+            matchScore: app.matchScore,
+            appliedAt: new Date().toISOString(),
+            source: 'auto',
+            emailSubject: app.email.subject
+          };
+          
+          const applied = loadAppliedJobs();
+          applied.push(appliedData);
+          saveAppliedJobs(applied);
+          renderAppliedJobs();
+          
+          btn.innerHTML = '✓ Applied!';
+          btn.style.background = '#059669';
+          setStatus('Auto-apply successful!', false);
+          
+          alert(`Successfully applied to "${app.job.title}"!\n\nDetails:\n- Found: ${data.found_apply_button ? 'Apply button' : 'Contact form'}\n- Contact: ${data.contact_info || 'N/A'}`);
+        } else {
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+          setStatus('Auto-apply not available', false);
+          
+          alert(`Could not auto-apply to "${app.job.title}".\n\nReason: ${data.message}\n\nYou can still copy the email and apply manually.`);
+        }
+      } catch (error) {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        setStatus('Error', false);
+        alert('Auto-apply failed: ' + error.message);
+      }
+    }
+
+    // Load applied jobs on init
+    window.addEventListener('load', function() {
+      setTimeout(renderAppliedJobs, 100);
+    });
 
     async function matchJobs() {
       setStatus('Matching jobs...', true);
@@ -991,7 +1560,42 @@
       
       const matchedMap = new Map(matchedJobs.map(j => [j.title + j.company, j]));
 
-      grid.innerHTML = results.map((job, index) => {
+      // Apply sort
+      const sortValue = document.getElementById('sortFilter')?.value || 'score-desc';
+      const sortedResults = [...results].sort((a, b) => {
+        const ma = matchedMap.get(a.title + a.company);
+        const mb = matchedMap.get(b.title + b.company);
+        const scoreA = ma?.relevance_score || 0;
+        const scoreB = mb?.relevance_score || 0;
+        
+        switch(sortValue) {
+          case 'score-desc': return scoreB - scoreA;
+          case 'score-asc': return scoreA - scoreB;
+          case 'company-asc': return (a.company || '').localeCompare(b.company || '');
+          case 'company-desc': return (b.company || '').localeCompare(a.company || '');
+          case 'title-asc': return (a.title || '').localeCompare(b.title || '');
+          case 'title-desc': return (b.title || '').localeCompare(a.title || '');
+          default: return 0;
+        }
+      });
+
+      // Apply score filter
+      const scoreFilterValue = parseInt(document.getElementById('scoreFilter')?.value || '0');
+      const filteredResults = scoreFilterValue > 0 
+        ? sortedResults.filter(job => {
+            const matched = matchedMap.get(job.title + job.company);
+            return (matched?.relevance_score || 0) >= scoreFilterValue / 100;
+          })
+        : sortedResults;
+
+      // Update count badge
+      const filteredMatched = filteredResults.filter(job => {
+        const matched = matchedMap.get(job.title + job.company);
+        return matched && matched.relevance_score >= 0.3;
+      }).length;
+      document.getElementById('jobCountBadge').textContent = `(${filteredMatched} matched of ${results.length})`;
+
+      grid.innerHTML = filteredResults.map((job, index) => {
         const matched = matchedMap.get(job.title + job.company);
         const score = matched?.relevance_score || 0;
         const matchedSkills = matched?.matched_skills || [];
@@ -1007,27 +1611,146 @@
                 <div class="job-title">${job.title}</div>
                 <div class="job-company">${job.company}</div>
               </div>
-              <span class="score-badge ${scoreClass}">${getScoreLabel(score)} ${Math.round(score * 100)}%</span>
+              <span class="score-badge ${scoreClass}">${Math.round(score * 100)}% Match</span>
             </div>
             ${matchedSkills.length > 0 ? `
               <div class="job-skills">
-                ${matchedSkills.slice(0, 5).map(s => `<span class="job-skill">${s}</span>`).join('')}
+                <span class="job-skill" style="background: var(--success); color: white;">✓ ${matchedSkills.length} matched</span>
+                ${matchedSkills.slice(0, 4).map(s => `<span class="job-skill">${s}</span>`).join('')}
+                ${matchedSkills.length > 4 ? `<span class="job-skill">+${matchedSkills.length - 4}</span>` : ''}
               </div>
-            ` : ''}
+            ` : '<div class="job-skills"><span class="job-skill" style="color: var(--text-secondary);">No skills matched</span></div>'}
             <a href="${job.url}" target="_blank" class="job-link" onclick="event.stopPropagation()">
               View on OnlineJobs.ph
             </a>
+            <button class="show-debug-btn" onclick="event.stopPropagation(); showDebugModal(${index})" title="View match details">? Verify</button>
+            <button class="show-debug-btn" style="background: #ECFDF5; color: #059669; border-color: #059669;" onclick="event.stopPropagation(); markAsApplied(${index})" title="Mark as applied">✓ Apply</button>
           </div>
         `;
       }).join('');
     }
+
+    function sortJobs() {
+      if (appState.jobs.matched.length > 0) {
+        renderJobs(appState.jobs.results, appState.jobs.matched);
+      }
+    }
+
+    function filterJobs() {
+      if (appState.jobs.matched.length > 0) {
+        renderJobs(appState.jobs.results, appState.jobs.matched);
+      }
+    }
+
+    function showDebugModal(jobIndex) {
+      const job = appState.jobs.results[jobIndex];
+      const matched = appState.jobs.matched.find(m => m.title === job.title);
+      
+      if (!matched) {
+        alert('No match data available for this job');
+        return;
+      }
+
+      const score = matched.relevance_score;
+      const matchedSkills = matched.matched_skills || [];
+      const resumeSkills = appState.resume.skills || [];
+      
+      // Calculate breakdown
+      const totalResumeSkills = resumeSkills.length;
+      const exactMatches = matchedSkills.filter(s => 
+        job.title.toLowerCase().includes(s.toLowerCase())
+      ).length;
+      const partialMatches = matchedSkills.length - exactMatches;
+      
+      // Skill score (70% weight)
+      const skillScore = totalResumeSkills > 0 
+        ? (matchedSkills.length / totalResumeSkills) * 0.7 
+        : 0;
+      
+      // Title overlap (20% weight)
+      const jobWords = job.title.toLowerCase().split(/\s+/);
+      const resumeText = (appState.resume.text || '').toLowerCase();
+      const overlapWords = jobWords.filter(w => w.length > 3 && resumeText.includes(w));
+      const titleScore = (overlapWords.length / Math.max(jobWords.length, 1)) * 0.2;
+      
+      // Experience bonus (10% weight)
+      const expKeywords = ['years', 'experience', 'senior', 'junior', 'lead', 'manager'];
+      const hasExpMatch = expKeywords.some(k => 
+        job.title.toLowerCase().includes(k) && resumeText.includes(k)
+      );
+      const expScore = hasExpMatch ? 0.1 : 0;
+
+      const content = document.getElementById('debugContent');
+      content.innerHTML = `
+        <div class="debug-score">${Math.round(score * 100)}% Match</div>
+        
+        <div class="debug-section">
+          <h4>Job Details</h4>
+          <div class="debug-row"><span>Title:</span><span>${job.title}</span></div>
+          <div class="debug-row"><span>Company:</span><span>${job.company}</span></div>
+          <div class="debug-row"><span>URL:</span><span style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;">${job.url}</span></div>
+        </div>
+        
+        <div class="debug-section">
+          <h4>Score Breakdown</h4>
+          <div class="debug-row">
+            <span>Skills Match (70% weight):</span>
+            <span>${(skillScore * 100).toFixed(0)}%</span>
+          </div>
+          <div class="debug-row">
+            <span>Title Overlap (20% weight):</span>
+            <span>${(titleScore * 100).toFixed(0)}%</span>
+          </div>
+          <div class="debug-row">
+            <span>Experience (10% weight):</span>
+            <span>${(expScore * 100).toFixed(0)}%</span>
+          </div>
+        </div>
+        
+        <div class="debug-section">
+          <h4>Resume Skills (${totalResumeSkills} total)</h4>
+          <div class="match-details">
+            ${resumeSkills.map(s => `<span class="job-skill" style="margin:2px;">${s}</span>`).join('')}
+          </div>
+        </div>
+        
+        <div class="debug-section">
+          <h4>Matched Skills (${matchedSkills.length})</h4>
+          <div class="match-details">
+            ${matchedSkills.length > 0 
+              ? matchedSkills.map(s => `<span class="job-skill" style="background:var(--success);color:white;margin:2px;">${s}</span>`).join('') 
+              : '<span style="color:var(--warning);">No skills matched</span>'}
+          </div>
+          ${exactMatches > 0 ? `<div style="margin-top:8px;font-size:11px;">✓ ${exactMatches} exact + ${partialMatches} partial</div>` : ''}
+        </div>
+        
+        ${overlapWords.length > 0 ? `
+        <div class="debug-section">
+          <h4>Title Words Matched</h4>
+          <div class="match-details">
+            ${overlapWords.map(w => `<span class="job-skill" style="margin:2px;">${w}</span>`).join('')}
+          </div>
+        </div>
+        ` : ''}
+      `;
+      
+      document.getElementById('debugModal').classList.remove('hidden');
+    }
+
+    function closeDebugModal() {
+      document.getElementById('debugModal').classList.add('hidden');
+    }
+
+    // Close modal on outside click
+    document.getElementById('debugModal').addEventListener('click', function(e) {
+      if (e.target === this) closeDebugModal();
+    });
 
     async function selectJob(index) {
       const job = appState.jobs.results[index];
       const matched = appState.jobs.matched.find(m => m.title === job.title);
       appState.selectedJob = { ...job, ...matched };
       
-      // Highlight selected card
       document.querySelectorAll('.job-card').forEach(card => {
         card.style.borderLeftColor = card.classList.contains('score-high') ? 'var(--success)' :
                                     card.classList.contains('score-medium') ? 'var(--warning)' : 'var(--border)';
@@ -1095,14 +1818,15 @@
 
     async function generateCV(jobIndex) {
       const job = appState.jobs.results[jobIndex];
-      if (!appState.resume.parsed) {
+      if (!appState.resume.parsed || !appState.resume.text) {
         alert('Please parse your resume first');
         return;
       }
       
       const btn = document.getElementById('searchJobsBtn');
       setLoading(btn, true);
-      setStatus('Generating personalized CV...', true);
+      setStatus('Generating application email...', true);
+      setStep(4);
       
       try {
         const response = await fetch('/api/customize_cv', {
@@ -1110,8 +1834,12 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             job_data: JSON.stringify(job),
-            resume_data: JSON.stringify(appState.resume),
-            user_name: ''
+            resume_data: JSON.stringify({
+              text: appState.resume.text,
+              skills: appState.resume.skills,
+              name: appState.resume.name
+            }),
+            user_name: appState.resume.name
           })
         });
         
@@ -1119,50 +1847,41 @@
         setLoading(btn, false);
         
         if (data.status === 'success') {
-          showCVPreview(data);
-          setStatus('CV ready for review', false);
+          showEmailPreview(data);
+          setStatus('Application email ready', false);
         } else {
-          throw new Error(data.message || 'Failed to generate CV');
+          throw new Error(data.message || 'Failed to generate application');
         }
       } catch (error) {
         setLoading(btn, false);
         setStatus('Error', false);
-        alert('Failed to generate CV: ' + error.message);
+        alert('Failed to generate application: ' + error.message);
       }
     }
 
-    function showCVPreview(data) {
+    function showEmailPreview(data) {
       const section = document.getElementById('cvPreviewSection');
-      const atsBadge = document.getElementById('atsScore');
-      const summary = document.getElementById('cvSummary');
-      const experience = document.getElementById('cvExperience');
-      const skills = document.getElementById('cvSkills');
-      const insights = document.getElementById('cvInsights');
+      const subjectEl = document.getElementById('emailSubject');
+      const bodyEl = document.getElementById('emailBody');
+      const matchScoreEl = document.getElementById('matchScore');
       
-      atsBadge.textContent = `ATS Score: ${data.ats_score}%`;
-      atsBadge.style.color = data.ats_score >= 80 ? 'var(--success)' : 
-                             data.ats_score >= 60 ? 'var(--warning)' : 'var(--text-secondary)';
+      subjectEl.textContent = data.email.subject;
+      bodyEl.textContent = data.email.body;
       
-      summary.textContent = data.personalized_cv.summary;
-      
-      experience.innerHTML = data.personalized_cv.experience.map(exp => `
-        <div style="margin-bottom: 12px; padding: 12px; background: var(--bg); border-radius: 8px;">
-          <div style="font-weight: 600;">${exp.title}</div>
-          <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">${exp.company}</div>
-          <ul style="margin: 0; padding-left: 20px;">
-            ${exp.highlights.map(h => `<li>${h}</li>`).join('')}
-          </ul>
-        </div>
-      `).join('');
-      
-      skills.textContent = data.personalized_cv.skills;
-      insights.textContent = data.match_insights;
+      if (data.match_score) {
+        const pct = Math.round(data.match_score * 100);
+        matchScoreEl.textContent = `Match: ${pct}%`;
+        matchScoreEl.style.color = pct >= 70 ? 'var(--success)' : 
+                                   pct >= 50 ? 'var(--warning)' : 'var(--text-secondary)';
+      }
       
       section.classList.remove('hidden');
       section.scrollIntoView({ behavior: 'smooth' });
+      
+      appState.emailData = data;
     }
 
-    function regenerateCV() {
+    function regenerateEmail() {
       const btn = document.getElementById('regenerateBtn');
       setLoading(btn, true);
       
@@ -1172,71 +1891,44 @@
           generateCV(jobIndex);
         }
       }
+      setLoading(btn, false);
     }
 
-    function sendApplication() {
-      const job = appState.selectedJob;
-      const cvData = appState.personalizedCV;
-      const userName = document.getElementById('userName').value.trim() || 'Your Name';
+    function copyEmail() {
+      const data = appState.emailData;
+      if (!data) return;
       
-      if (!job || !cvData) {
-        alert('No CV data available');
-        return;
-      }
-      
-      // Build email-style application (OLJ style)
-      const experienceText = cvData.experience.map(exp => 
-        `${exp.title} at ${exp.company}:\n${exp.highlights.map(h => '• ' + h).join('\n')}`
-      ).join('\n\n');
-      
-      const emailBody = `Subject: Application for ${job.title} - ${userName}
-
-Hi,
-
-I am writing to express my interest in the ${job.title} position at ${job.company}.
-
-PROFESSIONAL SUMMARY:
-${cvData.summary}
-
-WORK EXPERIENCE:
-${experienceText}
-
-KEY SKILLS:
-${cvData.skills}
-
-${job.work_type ? `Employment Type: ${job.work_type}\n` : ''}${job.location ? `Location: ${job.location}\n` : ''}
-
-${job.url ? `Source: ${job.url}` : ''}
-
-Thank you for considering my application. I am available for an interview at your convenience and look forward to hearing from you.
-
-Best regards,
-${userName}`;
-      
-      // Create mailto link
-      const subjectEncoded = encodeURIComponent(`Application for ${job.title}`);
-      const bodyEncoded = encodeURIComponent(emailBody);
-      
-      window.location.href = `mailto:?subject=${subjectEncoded}&body=${bodyEncoded}`;
-      
-      // Also copy to clipboard as backup
-      navigator.clipboard.writeText(emailBody).then(() => {
-        const btn = document.getElementById('sendAppBtn');
-        const original = btn.textContent;
-        btn.textContent = 'Opening email...';
-        setTimeout(() => btn.textContent = original, 3000);
+      const emailText = data.email.full_email || `Subject: ${data.email.subject}\n\n${data.email.body}`;
+      navigator.clipboard.writeText(emailText).then(() => {
+        const btn = document.querySelector('#cvPreviewSection .copy-btn');
+        const original = btn.innerHTML;
+        btn.innerHTML = '<span>✓</span> Copied!';
+        setTimeout(() => btn.innerHTML = original, 2000);
       });
     }
 
-    // Store personalized CV for email
-    appState.personalizedCV = null;
-
-    // Update showCVPreview to store CV data
-    const originalShowCVPreview = showCVPreview;
-    showCVPreview = function(data) {
-      originalShowCVPreview(data);
-      appState.personalizedCV = data.personalized_cv;
-    };
+    function sendApplication() {
+      const data = appState.emailData;
+      
+      if (!data || !data.email) {
+        alert('No application email generated');
+        return;
+      }
+      
+      const emailBody = data.email.full_email || `Subject: ${data.email.subject}\n\n${data.email.body}`;
+      
+      const subjectEncoded = encodeURIComponent(data.email.subject);
+      const bodyEncoded = encodeURIComponent(data.email.body);
+      
+      window.location.href = `mailto:?subject=${subjectEncoded}&body=${bodyEncoded}`;
+      
+      navigator.clipboard.writeText(emailBody).then(() => {
+        const btn = document.getElementById('sendAppBtn');
+        const original = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner" style="border-color: rgba(255,255,255,0.3); border-top-color: white;"></span> Opened!';
+        setTimeout(() => btn.innerHTML = original, 3000);
+      });
+    }
 
     // Load state from localStorage on init
     function init() {

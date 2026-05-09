@@ -15,6 +15,7 @@ from app.tools import (
     match_jobs_to_resume,
     generate_cover_letter,
     customize_cv,
+    auto_apply_job,
 )
 
 app = FastAPI(title="JobHunter Agent API")
@@ -46,7 +47,10 @@ async def api_parse_resume(request: Request):
     body = await request.json()
     resume_text = body.get("resume_text", "")
     result = await parse_resume(resume_text=resume_text)
-    return json.loads(result)
+    parsed = json.loads(result)
+    parsed["raw_text"] = resume_text
+    parsed["name"] = ""
+    return parsed
 
 
 @app.post("/api/upload_resume")
@@ -78,7 +82,10 @@ async def api_upload_resume(file: UploadFile = File(...)):
             text = content.decode("latin-1")
 
     result = await parse_resume(resume_text=text)
-    return json.loads(result)
+    parsed = json.loads(result)
+    parsed["raw_text"] = text
+    parsed["name"] = ""
+    return parsed
 
 
 @app.post("/api/scrape_jobs")
@@ -116,6 +123,19 @@ async def api_customize_cv(request: Request):
     resume_data = body.get("resume_data", "{}")
     user_name = body.get("user_name", "")
     result = await customize_cv(job_data, resume_data, user_name)
+    return json.loads(result)
+
+
+@app.post("/api/auto_apply")
+async def api_auto_apply(request: Request):
+    body = await request.json()
+    job_url = body.get("job_url", "")
+    application_message = body.get("application_message", "")
+
+    if not job_url:
+        return {"status": "error", "message": "No job URL provided"}
+
+    result = await auto_apply_job(job_url, application_message)
     return json.loads(result)
 
 
