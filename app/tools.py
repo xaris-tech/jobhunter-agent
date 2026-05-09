@@ -702,11 +702,11 @@ async def customize_cv(
         resume_context += f"\nEducation: {'; '.join(resume_education[:2])}"
     resume_context += f"\n\nFull Resume:\n{resume_text[:2500]}"
 
-    prompt = f"""You are a professional job application writer for OnlineJobs.ph (a Filipino job board where applications are often sent via email or WhatsApp).
+    prompt = f"""You are a professional job application writer for OnlineJobs.ph.
 
-Create a complete, ready-to-send job application email tailored to this specific job posting.
+CRITICAL INSTRUCTION: Write the application based ONLY on the job requirements below. Do NOT invent job requirements or company details. Do NOT mention skills or experience from your resume that are NOT mentioned in the job posting.
 
-**Job Details:**
+**Job Details (THIS IS THE ONLY SOURCE OF TRUTH):**
 - Position: {job_title}
 - Company: {company}
 - Requirements: {job_description}
@@ -715,28 +715,28 @@ Create a complete, ready-to-send job application email tailored to this specific
 {resume_context}
 
 **Task:**
-Create a complete application message in this exact JSON format:
+Create a complete application message that addresses EXACTLY what the job posting asks for.
 
 {{
   "subject": "Application for [Position Title] - [Your Name]",
   "greeting": "Dear Hiring Manager," or "Hi,",
-  "introduction": "2-3 sentence introduction. State your interest in the position, mention how you found the job, and briefly state your key qualification (1 sentence).",
-  "qualifications": "2-3 sentences highlighting your MOST RELEVANT qualifications that directly match the job requirements. Use keywords from the job posting.",
-  "experience_summary": "A brief paragraph (2-3 sentences) summarizing your most relevant work experience that applies to this role. Focus on achievements and impact where possible.",
-  "skills_match": "List 4-6 specific skills you have that match the job requirements. Format as a simple comma-separated list or short sentence.",
-  "availability": "One sentence about your availability, preferred work setup (remote/onsite/hybrid), and available hours if mentioned.",
-  "closing": "1-2 sentence professional closing. Thank them and express eagerness to discuss further.",
+  "introduction": "2-3 sentence introduction. State your interest in the position and how you found it.",
+  "qualifications": "2-3 sentences highlighting qualifications that DIRECTLY MATCH the job requirements. ONLY mention skills/experience that are IN THE JOB POSTING. Use keywords from the job description verbatim.",
+  "experience_summary": "2-3 sentences about relevant experience. Focus on what matches the job requirements.",
+  "skills_match": "List 4-6 skills that EXACTLY match what's in the job requirements section. Do NOT add resume skills that aren't in the job posting.",
+  "availability": "One sentence about availability. If the job mentions specific hours or timezone, state that you can accommodate.",
+  "closing": "1-2 sentence professional closing.",
   "signature_name": "Applicant's full name from resume",
-  "signature_contact": "Contact info like email or phone, or 'Available for interview at your convenience'"
+  "signature_contact": "Contact info"
 }}
 
 Rules:
-- Write in professional but friendly tone (Filipino workplace style - warm but professional)
+- ONLY mention tools/technologies that appear in the job requirements
+- Do NOT mention a company name unless it's in the job posting
+- Do NOT claim experience with tools/frameworks not listed in the job
+- If the job mentions "Codex" or "Cursor" or specific tools, mention YOUR experience with those specific tools if you have it
 - Keep total email under 400 words
-- Use actual content from the resume, not generic phrases
-- Match keywords from job description in qualifications
-- Focus on achievements and measurable results where possible
-- Return ONLY valid JSON, no markdown code blocks or explanations"""
+- Return ONLY valid JSON"""
 
     try:
         result_text = None
