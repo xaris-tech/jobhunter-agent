@@ -1611,7 +1611,7 @@
         return `
           <div class="job-card ${scoreClass}" 
                style="animation-delay: ${index * 0.05}s"
-               onclick="selectJob(${index})"
+               onclick="selectJobByJob('${encodeURIComponent(JSON.stringify(job))}')"
                data-index="${index}">
             <div class="job-header">
               <div>
@@ -1755,17 +1755,52 @@
 
     async function selectJob(index) {
       const job = appState.jobs.results[index];
+      await selectJobByJob(job);
+    }
+
+    async function selectJobByJob(job) {
       const matched = appState.jobs.matched.find(m => m.title === job.title);
       appState.selectedJob = { ...job, ...matched };
       
       document.querySelectorAll('.job-card').forEach(card => {
-        card.style.borderLeftColor = card.classList.contains('score-high') ? 'var(--success)' :
-                                    card.classList.contains('score-medium') ? 'var(--warning)' : 'var(--border)';
+        card.style.borderLeftColor = 'var(--border)';
       });
-      const selectedCard = document.querySelector(`[data-index="${index}"]`);
-      if (selectedCard) selectedCard.style.borderLeftColor = 'var(--secondary)';
       
-      await generateCV(index);
+      const btn = document.getElementById('searchJobsBtn');
+      setLoading(btn, true);
+      setStatus('Generating application email...', true);
+      setStep(4);
+      
+      try {
+        const response = await fetch('/api/customize_cv', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            job_data: JSON.stringify(appState.selectedJob),
+            resume_data: JSON.stringify({
+              text: appState.resume.text,
+              skills: appState.resume.skills,
+              name: appState.resume.name
+            }),
+            user_name: appState.resume.name,
+            format_style: document.getElementById('formatStyle')?.value || 'paragraph'
+          })
+        });
+        
+        const data = await response.json();
+        setLoading(btn, false);
+        
+        if (data.status === 'success') {
+          showEmailPreview(data);
+          setStatus('Application email ready', false);
+        } else {
+          throw new Error(data.message || 'Failed to generate application');
+        }
+      } catch (error) {
+        setLoading(btn, false);
+        setStatus('Error', false);
+        alert('Failed to generate application: ' + error.message);
+      }
     }
 
     async function generateCoverLetter() {
@@ -1890,16 +1925,9 @@
     }
 
     function regenerateEmail() {
-      const btn = document.getElementById('regenerateBtn');
-      setLoading(btn, true);
-      
       if (appState.selectedJob) {
-        const jobIndex = appState.jobs.results.findIndex(j => j.title === appState.selectedJob.title);
-        if (jobIndex >= 0) {
-          generateCV(jobIndex);
-        }
+        selectJobByJob(appState.selectedJob);
       }
-      setLoading(btn, false);
     }
 
     function copyEmail() {
